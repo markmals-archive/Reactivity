@@ -43,9 +43,18 @@ The trap is deterministic: the same graph and the same read always trap at the s
 - When the developer reads either one
 - Then the process traps with a cycle diagnostic
 
+### Scenario 3: A cycle hidden behind a branch traps on the read that closes it
+
+<!-- id: error.reactive.cycle.branch-gated -->
+
+- Given two derived values activated while a condition source kept their computations independent
+- And the condition source has since changed so that evaluating one value now reads the other, mutually
+- When the developer reads either value
+- Then the process traps with a cycle diagnostic
+
 ## Underlying cause (informational)
 
-- A tracked read reaches a value whose computation appears in the current task's chain of in-progress computations. Detection walks that chain (it is as deep as computation nesting, not graph size); the trapping site carries this spec's reverse pointer.
+- A read reaches a value whose **evaluation** is already in progress on the current task — where evaluation covers both running the value's computation and re-validating its inputs after a change. Detection walks the task's chain of in-progress evaluations (as deep as evaluation nesting, not graph size); the trapping site carries this spec's reverse pointer.
 - A write into the writer's own inputs from inside a computation is the write-side route into the same condition; see the warnings in `domain.state` and `domain.derived-state`.
 
 ## Related
