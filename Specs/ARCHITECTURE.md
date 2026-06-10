@@ -36,7 +36,7 @@ Dependencies point inward: the scheduler depends on the graph; the graph depends
 
 ## Concurrency model
 
-The package compiles under Swift 6 with `StrictConcurrency` enabled (see `Package.swift`). The reactive context (the "currently-tracking observer") is ambient state that must be established correctly across the graph; how that ambient context is represented and isolated — task-local, actor-isolated, or main-actor-pinned — is a **load-bearing behavioral contract**, not an implementation detail. Capture it in `domain.*`/`behavior.*` specs (e.g. _what happens when a signal is read outside any reactive context_, _whether tracking crosses an `await`_), mark genuinely internal isolation bookkeeping `// SPEC: manual`, and flag any divergence with `(deviates: …)`. The "Why Thread Local?" discussion the README links is the historical context for this decision.
+The package compiles under Swift 6 with `StrictConcurrency` enabled (see `Package.swift`). The reactive context (the "currently-tracking observer") is ambient state that must be established correctly across the graph. **It is represented as a task-local value (`@TaskLocal`)**, so tracking **propagates across `await`**: a tracked read after a suspension still registers a dependency, and the context flows into the structured child tasks a computation spawns (`async let`, task groups) but not into detached tasks. This is a load-bearing behavioral contract, pinned in `domain.signal` → "The reactive context" — not an implementation detail. Thread-local was deliberately **not** chosen: it cannot survive a suspension, so it could not give this cross-`await` tracking. The "Why Thread Local?" discussion the README links is the lineage context this decision moves past. Internal isolation bookkeeping is marked `// SPEC: manual`; flag any divergence with `(deviates: …)`.
 
 ## Module layout
 
@@ -69,4 +69,4 @@ Tests/
 
 <!-- Things deliberately deferred. Tag with the date so they can be revisited. -->
 
-- _(2026-06-09)_ The isolation model for the reactive context (see "Concurrency model") is the load-bearing open question; pin it with a `domain.*` spec before broadening the public API.
+- _(2026-06-09 → resolved 2026-06-10)_ The isolation model for the reactive context is **pinned**: task-local (`@TaskLocal`), with tracking crossing `await`. See `domain.signal` → "The reactive context" and "Concurrency model" above.
