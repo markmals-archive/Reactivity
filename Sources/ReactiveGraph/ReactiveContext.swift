@@ -7,24 +7,45 @@
 // A root owner is bound task-locally alongside the reactive context so that
 // computations created inside withReactiveScope are associated with a scope.
 
+// MARK: - SourceEdge
+
+/// A tracked dependency edge from a consumer node to one of its sources.
+///
+/// Captures the value the consumer last observed from this source (the snapshot)
+/// so that validation can determine whether the source has actually changed
+/// since the consumer's last computation, enabling revert detection.
+// SPEC: behavior.reactive.equality-gating — per-edge value snapshot; the
+// hasChangedSinceSeen closure compares the snapshot against the source's
+// current value using the source's own equality policy.
+struct SourceEdge {
+    /// Handle to the source node (used for updateIfNecessary and observer removal).
+    let node: AnyReactiveNode
+
+    /// Returns `true` when the source's current value differs from the value
+    /// this consumer last observed (the per-edge snapshot).
+    let hasChangedSinceSeen: () -> Bool
+}
+
+// MARK: - ReactiveFrame
+
 /// A reactive computation currently running.
 ///
 /// Carries a handle pointing back to the observer node (the derived node whose
 /// body is currently executing) so that each source read during the body can
 /// register the observer in its own `observers` list. Also accumulates the
-/// source handles seen during this run for use as the new `sources` list.
+/// source edges seen during this run for use as the new `sources` list.
 final class ReactiveFrame: @unchecked Sendable {
     // @unchecked Sendable: a frame is created, used, and discarded within a single
     // synchronous recompute() call and never escapes it. Async computation bodies
-    // (where structured child tasks could call track(_:) concurrently) are not
-    // implemented yet; revisit this conformance when they land.
+    // (where structured child tasks could call track(_:hasChangedSinceSeen:)
+    // concurrently) are not implemented yet; revisit this conformance when they land.
 
     /// Handle pointing to the observer node (the derived node being evaluated),
     /// registered with each source read during the run.
     let observer: AnyReactiveNode
 
-    /// Source handles accumulated during this run; becomes the node's new `sources`.
-    var sources: [AnyReactiveNode] = []
+    /// Source edges accumulated during this run; becomes the node's new `sources`.
+    var sources: [SourceEdge] = []
 
     init(observer: AnyReactiveNode) {
         self.observer = observer
@@ -38,11 +59,14 @@ final class ReactiveFrame: @unchecked Sendable {
         trackedIdentities.contains(id)
     }
 
-    func track(_ sourceHandle: AnyReactiveNode) {
-        trackedIdentities.insert(sourceHandle.identity)
-        sources.append(sourceHandle)
+    /// Records a dependency edge to the given source node with its snapshot comparison.
+    func track(_ node: AnyReactiveNode, hasChangedSinceSeen: @escaping () -> Bool) {
+        trackedIdentities.insert(node.identity)
+        sources.append(SourceEdge(node: node, hasChangedSinceSeen: hasChangedSinceSeen))
     }
 }
+
+// MARK: - ReactiveOwner
 
 /// A root owner that provides a scope for reactive computations.
 /// Cleanup and disposal are out of scope this pass.
