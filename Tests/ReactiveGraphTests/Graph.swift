@@ -335,6 +335,9 @@ struct EqualityGatingTests {
             computationCount = 0
 
             a = "aa"
+            // Strengthen: actually read d after the write so laziness can't mask a bug.
+            // The value must still be "b c" and the count must remain 0.
+            #expect(d == "b c")
             #expect(computationCount == 0)
         }
     }

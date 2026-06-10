@@ -284,6 +284,19 @@ public struct State<Wrapped>: WritableSignal, Sendable {
 
     // SPEC: behavior.reactive.untracking
     public func peek() -> Wrapped { todo() }
+
+    /// Creates a source node gated by a custom comparator.
+    ///
+    /// The comparator defines both **observable change** and **storage acceptance**:
+    /// when `equals(current, newValue)` returns `true` the assignment is a no-op —
+    /// the previously stored instance is kept and no dependent is notified.
+    /// Pass `{ _, _ in false }` to force notification on every write (Solid's
+    /// `equals: false`). Unlike the `Equatable`-constrained overload, this
+    /// initialiser is available for any `Wrapped` type.
+    // SPEC: behavior.reactive.equality-gating — comparator surface on source nodes.
+    public init(wrappedValue: Wrapped, equals: @escaping (Wrapped, Wrapped) -> Bool) {
+        node = ReactiveNode(value: wrappedValue, isEqual: equals)
+    }
 }
 
 extension State where Wrapped: Equatable {
@@ -314,6 +327,22 @@ public struct DerivedState<Wrapped>: ReadableSignal, Sendable {
 
     /// Returns this wrapper itself; copying a `DerivedState` shares the underlying node.
     public var projectedValue: Self { self }
+
+    /// Creates a derived node with a custom comparator gating downstream propagation.
+    ///
+    /// The recomputed value is always stored (direct reads see it), but a downstream
+    /// dependent recomputes only when `equals` deems the current value changed from
+    /// the one that dependent last observed — when the comparator reports equality,
+    /// propagation stops there. Pass `{ _, _ in false }` to always propagate
+    /// (Solid's `equals: false`). This initialiser is available for any `Wrapped`
+    /// type, giving non-`Equatable` values a way to gate propagation.
+    // SPEC: behavior.reactive.equality-gating — comparator surface on derived nodes.
+    public init(
+        wrappedValue expression: @autoclosure @escaping () throws -> Wrapped,
+        equals: @escaping (Wrapped, Wrapped) -> Bool
+    ) {
+        node = ReactiveNode(body: expression, isEqual: equals)
+    }
 }
 
 extension DerivedState where Wrapped: Equatable {
