@@ -3,6 +3,37 @@ import Testing
 
 @Suite(.spec("behavior.reactive.derivation"))
 struct DerivedTests {
+    // Scenario 3 — nested-state
+    // A reference-typed model carries @State properties; a derived value reads one.
+    // Expected: GREEN once the target compiles (no new implementation needed beyond
+    // the domain.state invariant that each @State property is its own signal).
+    @Test(.scenario("behavior.reactive.derivation.nested-state"))
+    func `propagates a state property change through a reference-typed model`() {
+        // @unchecked Sendable: Model is a local, non-escaping instance used only
+        // within this synchronous scope — no concurrent access is possible.
+        final class Model: @unchecked Sendable {
+            @State var value = 0
+        }
+
+        withReactiveScope {
+            let model = Model()
+            var computationCount = 0
+            @DerivedState var derived = {
+                computationCount += 1
+                return model.value
+            }()
+
+            // First read activates the derivation.
+            #expect(derived == 0)
+            #expect(computationCount == 1)
+
+            // Write through the model's own @State property — must propagate.
+            model.value = 5
+            #expect(derived == 5)
+            #expect(computationCount == 2)
+        }
+    }
+
     @Test(.scenario("behavior.reactive.derivation.chained-propagation"))
     func `propagates a change through a chain of derived values`() {
         withReactiveScope {
