@@ -24,9 +24,17 @@ public func withReactiveScope<T>(_ root: @escaping () async throws -> T) async r
     todo()
 }
 
+/// Runs `root` under a fresh reactive owner scope and returns its result.
+///
+/// All reactive computations created inside `root` are associated with this
+/// scope. The owner is bound as a task-local value so it propagates into
+/// structured child tasks but not detached tasks.
 @discardableResult
 public func withReactiveScope<T>(_ root: @escaping () throws -> T) rethrows -> T {
-    todo()
+    let owner = ReactiveOwner()
+    return try ReactiveOwnerKey.$current.withValue(owner) {
+        try root()
+    }
 }
 
 // SPEC: domain.observer
@@ -253,42 +261,67 @@ public protocol WritableSignal<Wrapped>: ReadableSignal {
 // SPEC: domain.state
 @propertyWrapper
 public struct State<Wrapped>: WritableSignal, Sendable {
+    private let node: ReactiveNode<Wrapped>
+
+    /// Creates a source node with `wrappedValue` as its initial value.
+    ///
+    /// `Wrapped` is not `Equatable`, so writes cannot be equality-gated:
+    /// every write notifies dependents.
     public init(wrappedValue: Wrapped) {
-        todo()
+        node = ReactiveNode(value: wrappedValue, isEqual: { _, _ in false })
     }
 
+    /// Reads the current value, registering a dependency edge when called from
+    /// inside a reactive computation. Writes notify all current dependents unless
+    /// the new value equals the current one.
     public var wrappedValue: Wrapped {
-        get {
-            todo()
-        }
-        nonmutating set {
-            todo()
-        }
+        get { node.read() }
+        nonmutating set { node.write(newValue) }
     }
 
-    public var projectedValue: Self {
-        todo()
-    }
+    /// Returns this wrapper itself; copying a `State` shares the underlying node.
+    public var projectedValue: Self { self }
 
     // SPEC: behavior.reactive.untracking
-    public func peek() -> Wrapped {
-        todo()
+    public func peek() -> Wrapped { todo() }
+}
+
+extension State where Wrapped: Equatable {
+    /// Creates a source node whose writes are equality-gated: assigning a value
+    /// equal to the current one is a no-op and notifies no dependents.
+    public init(wrappedValue: Wrapped) {
+        node = ReactiveNode(value: wrappedValue, isEqual: ==)
     }
 }
 
 // SPEC: domain.derived-state
 @propertyWrapper
 public struct DerivedState<Wrapped>: ReadableSignal, Sendable {
+    private let node: ReactiveNode<Wrapped>
+
+    /// Creates a derived node whose value is produced lazily by `expression`.
+    ///
+    /// The expression is not evaluated until the first read (lazy invariant).
+    /// Subsequent reads return the cached value unless a dependency has changed.
     public init(wrappedValue expression: @autoclosure @escaping () throws -> Wrapped) {
-        todo()
+        node = ReactiveNode(body: expression, isEqual: { _, _ in false })
     }
 
-    public var wrappedValue: Wrapped {
-        todo()
-    }
+    /// Reads the current value, recomputing if any dependency has changed since
+    /// the last read. Registers a dependency edge when called from inside a
+    /// reactive computation.
+    public var wrappedValue: Wrapped { node.read() }
 
-    public var projectedValue: Self {
-        todo()
+    /// Returns this wrapper itself; copying a `DerivedState` shares the underlying node.
+    public var projectedValue: Self { self }
+}
+
+extension DerivedState where Wrapped: Equatable {
+    /// Creates a derived node with equality-gated change propagation: when a
+    /// recompute yields a value equal to the previous one, downstream dependents
+    /// are not notified.
+    public init(wrappedValue expression: @autoclosure @escaping () throws -> Wrapped) {
+        node = ReactiveNode(body: expression, isEqual: ==)
     }
 }
 
