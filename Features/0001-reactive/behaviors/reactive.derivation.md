@@ -30,3 +30,12 @@ A value computed from other reactive values recomputes when any value it read ch
 - Given a value derived from a single source along two different paths
 - When the source changes
 - Then reading that value yields a result computed from the source's new value along both paths
+
+### Scenario 3: State nested in a reference type still propagates
+
+<!-- id: behavior.reactive.derivation.nested-state -->
+
+- Given a reference-typed model whose property is reactive state
+- And a derived value computed from that property
+- When the property changes
+- Then reading the derived value yields a result computed from the property's new value
