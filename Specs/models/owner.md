@@ -32,7 +32,7 @@ An owner _is_ its node in the tree: its set of owned children (signals, derived 
 
 - **Containment.** Reactive work created while an owner is current is owned by it.
 - **Children before self.** Disposing an owner disposes its children first, then runs the owner's own cleanups. See `behavior.reactive.cleanup` and `behavior.reactive.nested-effects`.
-- **Cleanup on re-run and on dispose.** A cleanup registered inside an observer runs before that observer's next run, and again if the owner is disposed. A cleanup registered in a `withReactiveScope` body runs when that scope is disposed. See `behavior.reactive.cleanup`.
+- **Cleanup on re-run and on dispose.** A cleanup registered inside an observer runs before that observer's next run, and again if the owner is disposed. A cleanup registered in a `withReactiveScope` body runs when that scope is disposed. Multiple cleanups on one owner run **last-registered-first (LIFO)**. See `behavior.reactive.cleanup`.
 - **Idempotent disposal.** Disposing an already-disposed owner does nothing further.
 - **Scope value.** `withReactiveScope` returns the value its body returns and rethrows what its body throws.
 
@@ -48,5 +48,5 @@ An owner _is_ its node in the tree: its set of owned children (signals, derived 
 
 ## Notes
 
-- The `onCleanup` ordering relative to multiple registrations within one owner (LIFO vs. FIFO) is not pinned by the current suite. _[NEEDS CLARIFICATION: do multiple cleanups on one owner run in reverse-registration (LIFO) or registration (FIFO) order?]_
+- **Same-owner cleanup order is LIFO**, chosen to match SolidJS 1.x. Solid's `cleanNode` appends each cleanup (`Owner.cleanups.push(fn)`) and runs them in reverse (`for i = count − 1 … 0`), so the last-registered runs first — conventional resource-unwinding order, where a cleanup may safely depend on setup an earlier-registered cleanup performed. Solid adopted this at v1.7.0 (earlier 1.x ran them FIFO); we match current 1.x. Neither Solid's suite nor ours pins this yet, so `behavior.reactive.cleanup` should gain a scenario for it before `/sdd-apply`.
 - `Dispose` is `Sendable` by virtue of being a plain closure type alias; effect teardown may be scheduled rather than synchronous (the async `Clean an effect` scenario yields to the scheduler before observing teardown). See `behavior.reactive.cleanup`.
