@@ -45,6 +45,10 @@ alias = "l"
 description = "Lint Swift sources (swift format, strict)"
 run = "swift format lint --strict --configuration .swift-format.json --recursive Sources Tests"
 
+[tasks.stress]
+description = "Deep multithreaded stress run under Thread Sanitizer (raise STRESS_ITERATIONS for longer soaks)"
+run = "swift test --filter Stress --sanitize=thread"
+
 [tasks.docs]
 description = "Build DocC documentation (swift-docc-plugin)"
 run = "swift package generate-documentation"
