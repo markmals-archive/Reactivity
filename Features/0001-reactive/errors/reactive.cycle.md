@@ -55,7 +55,7 @@ The trap is deterministic: the same graph and the same read always trap at the s
 ## Underlying cause (informational)
 
 - A read reaches a value whose **evaluation** is already in progress on the current task — where evaluation covers both running the value's computation and re-validating its inputs after a change. Detection walks the task's chain of in-progress evaluations (as deep as evaluation nesting, not graph size); the trapping site carries this spec's reverse pointer.
-- A write into the writer's own inputs from inside a computation is the write-side route into the same condition; see the warnings in `domain.state` and `domain.derived-state`.
+- Write-side feedback (a computation writing its own inputs) is **not** detected by this trap — only read-side re-entry is. Converging write feedback is governed by `behavior.reactive.write-visibility`; non-converging feedback never settles and is a programming error. See the warnings in `domain.state` and `domain.derived-state`.
 
 ## Related
 
