@@ -17,12 +17,12 @@ let peeked = $count.peek()  // an untracked read — registers nothing
 
 ## Shape
 
-| Member           | Type                            | Notes                                                                                                                                                                |
-| ---------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wrappedValue`   | `Wrapped`                       | `get` is a tracked read; `nonmutating set` is a write that notifies only when the value changes (see Invariants).                                                    |
-| init `equals:`   | `((Wrapped, Wrapped) -> Bool)?` | Optional comparator gating writes. Default: `==` when `Wrapped: Equatable`, else always-notify. Pass `{ _, _ in false }` to always notify (Solid's `equals: false`). |
-| `projectedValue` | `Self`                          | `$state` — the signal handle, used for `peek()`.                                                                                                                     |
-| `peek()`         | `() -> Wrapped`                 | Reads the current value **without** registering a dependency.                                                                                                        |
+| Member           | Type                         | Notes                                                                                                                                                                                                                     |
+| ---------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wrappedValue`   | `Wrapped`                    | `get` is a tracked read; `nonmutating set` is a write that notifies only when the value changes (see Invariants).                                                                                                         |
+| init `equals:`   | `(Wrapped, Wrapped) -> Bool` | Optional-to-supply comparator gating writes (a separate init overload; omit it for the default: `==` when `Wrapped: Equatable`, else always-notify). Pass `{ _, _ in false }` to always notify (Solid's `equals: false`). |
+| `projectedValue` | `Self`                       | `$state` — the signal handle, used for `peek()`.                                                                                                                                                                          |
+| `peek()`         | `() -> Wrapped`              | Reads the current value **without** registering a dependency.                                                                                                                                                             |
 
 The setter is `nonmutating`: assigning through `@State` mutates shared reactive storage, not the wrapper struct. Two reads of the same `@State` see the same storage.
 

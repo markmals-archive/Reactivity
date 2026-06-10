@@ -15,12 +15,12 @@ depends-on: [domain.signal, domain.state]
 
 ## Shape
 
-| Member           | Type                                          | Notes                                                                                                             |
-| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| init             | `@autoclosure @escaping () throws -> Wrapped` | The computation. Captured, not run, until first read.                                                             |
-| init `equals:`   | `((Wrapped, Wrapped) -> Bool)?`               | Optional comparator that overrides equality-gating. Default: `==` when `Wrapped: Equatable`, else always-changed. |
-| `wrappedValue`   | `Wrapped`                                     | A tracked read of the cached value; computes it on demand.                                                        |
-| `projectedValue` | `Self`                                        | `$derived` — the signal handle.                                                                                   |
+| Member           | Type                                          | Notes                                                                                                                                                              |
+| ---------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| init             | `@autoclosure @escaping () throws -> Wrapped` | The computation. Captured, not run, until first read.                                                                                                              |
+| init `equals:`   | `(Wrapped, Wrapped) -> Bool`                  | Optional-to-supply comparator overriding equality-gating (a separate init overload; omit it for the default: `==` when `Wrapped: Equatable`, else always-changed). |
+| `wrappedValue`   | `Wrapped`                                     | A tracked read of the cached value; computes it on demand.                                                                                                         |
+| `projectedValue` | `Self`                                        | `$derived` — the signal handle.                                                                                                                                    |
 
 The computation is a **throwing autoclosure**: it may read signals and may throw. A read of a derived value is therefore potentially throwing (`try`), and the body runs inside a reactive context so its reads register dependencies.
 
