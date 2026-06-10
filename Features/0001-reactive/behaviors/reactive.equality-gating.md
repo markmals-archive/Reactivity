@@ -66,3 +66,39 @@ Propagation stops at a value whose recomputed result is unchanged: an input that
 - Given a value that reads a source directly and also through an intermediate derived value that always recomputes to the same result
 - When the source changes
 - Then the value settles to the source's new value, even though the intermediate looks unchanged
+
+### Scenario 7: Writing an equal value to a source notifies nothing
+
+<!-- id: behavior.reactive.equality-gating.equal-write-noop -->
+
+- Given a derived value computed once from a source
+- When the developer assigns the source a value equal to its current one
+- Then reading the derived value yields the previous result without recomputing
+
+### Scenario 8: A custom comparator gates a source write
+
+<!-- id: behavior.reactive.equality-gating.custom-comparator -->
+
+- Given a source created with a comparator that treats two distinct values as equal
+- And a derived value computed once from that source
+- When the developer assigns the source the other of those two values
+- Then reading the derived value yields the previous result without recomputing
+
+### Scenario 9: An always-unequal comparator forces propagation
+
+<!-- id: behavior.reactive.equality-gating.force-notify -->
+
+- Given a source created with a comparator that never treats two values as equal
+- And a derived value computed once from that source
+- When the developer assigns the source its current value
+- Then reading the derived value triggers exactly one recompute
+
+### Scenario 10: A derived comparator gates downstream propagation
+
+<!-- id: behavior.reactive.equality-gating.derived-custom-comparator -->
+
+- Given a derived value created with a comparator that treats its recomputed results as equal
+- And a downstream value derived from it
+- When the source changes
+- Then the upstream value recomputes
+- And the downstream value does not recompute
