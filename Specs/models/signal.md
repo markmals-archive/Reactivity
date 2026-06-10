@@ -33,6 +33,7 @@ The reactive context is ambient, carried as a **task-local** value (`@TaskLocal`
 
 - **Read-tracks.** Inside a reactive context, reading a signal makes the reader a dependent of that signal — including reads after an `await`, since the context is task-local and crosses suspension points (see "The reactive context").
 - **Write-notifies.** Assigning a `WritableSignal`'s value schedules every current dependent to be re-checked.
+- **No lost updates.** Once an assignment returns, a subsequent read of any dependent reflects that write or a later one — a write that lands while a dependent is mid-recomputation must not be swallowed when that recomputation completes. See `behavior.reactive.write-visibility`. (Solid and Leptos leave this window open and lean on single-threaded event loops; this library closes it.)
 - **Dynamic dependencies.** The dependents of a signal are exactly the computations whose _most recent_ run read it. A computation that stops reading a signal on a later run stops being its dependent. See `behavior.reactive.dynamic-dependencies`.
 - **At-most-once per change.** A dependent is re-evaluated at most once in response to a single change, however many paths connect them. The minimum-recompute guarantee is stated in `behavior.reactive.glitch-free`.
 - **Untracked reads register nothing.** A read through `peek()` or `withoutTracking` never creates a dependency, even inside a reactive context. See `behavior.reactive.untracking`.
