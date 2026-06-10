@@ -27,11 +27,11 @@ A **reactive context** is the dynamic scope of the computation currently running
 - A read performed **inside** a reactive context registers a dependency edge from the running computation to the signal: the computation becomes a _dependent_ of the signal.
 - A read performed **outside** any reactive context (or inside `withoutTracking`, or via `peek()`) returns the current value and registers nothing.
 
-The reactive context is ambient, established by the library as it runs each computation. How that ambient state is isolated for Swift concurrency is a load-bearing contract tracked in `Specs/ARCHITECTURE.md` → "Concurrency model" and is _[NEEDS CLARIFICATION: whether a tracked read may cross an `await` — i.e. does the reactive context propagate across suspension points?]_.
+The reactive context is ambient, carried as a **task-local** value (`@TaskLocal`), and therefore **propagates across suspension points**: inside an `async` computation, a tracked read performed _after_ an `await` still registers a dependency. By `@TaskLocal` propagation rules the context flows into the structured child tasks a computation spawns (`async let`, task groups) but not into detached tasks (`Task.detached`). A read escapes tracking only by leaving the computation's task tree or by using `withoutTracking` / `peek()`. This is why the isolation is task-local rather than thread-local — thread-local would not survive a suspension. The representation is the load-bearing contract recorded in `Specs/ARCHITECTURE.md` → "Concurrency model".
 
 ## Invariants
 
-- **Read-tracks.** Inside a reactive context, reading a signal makes the reader a dependent of that signal.
+- **Read-tracks.** Inside a reactive context, reading a signal makes the reader a dependent of that signal — including reads after an `await`, since the context is task-local and crosses suspension points (see "The reactive context").
 - **Write-notifies.** Assigning a `WritableSignal`'s value schedules every current dependent to be re-checked.
 - **Dynamic dependencies.** The dependents of a signal are exactly the computations whose _most recent_ run read it. A computation that stops reading a signal on a later run stops being its dependent. See `behavior.reactive.dynamic-dependencies`.
 - **At-most-once per change.** A dependent is re-evaluated at most once in response to a single change, however many paths connect them. The minimum-recompute guarantee is stated in `behavior.reactive.glitch-free`.
