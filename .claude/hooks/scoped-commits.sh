@@ -88,7 +88,7 @@ is_valid_scope() {
   return 1
 }
 
-IFS=',' read -ra parts <<<"$raw_scope"Specs/
+IFS=',' read -ra parts <<<"$raw_scope"
 for p in "${parts[@]}"; do
   is_valid_scope "$p" || fail "Scope '$(printf '%s' "$p" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')' is not a defined scope. Use a spec/feature ID from specs/ or features/ (list: grep -rhE '^id:' specs features), a harness area (hooks, skills, commands, agents, templates, rules, docs, mise, readme), a name from .claude/commit-scopes (swift, package, tests, tooling), a 'features/<slug>', 'specs', or 'treewide'. See .claude/rules/commit-discipline.md."
 done
