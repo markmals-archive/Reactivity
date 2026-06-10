@@ -7,6 +7,35 @@
 // A root owner is bound task-locally alongside the reactive context so that
 // computations created inside withReactiveScope are associated with a scope.
 
+// MARK: - EvaluationChain
+
+/// A node in the task-local linked list of reactive evaluations currently in progress.
+///
+/// Each entry records the identity of a node currently being evaluated (either
+/// running its computation body or re-validating its inputs). Walking the chain
+/// from `EvaluationChainKey.current` yields every in-progress evaluation on
+/// this task; a node appearing in the chain while it is itself about to be
+/// evaluated means a dependency cycle has been formed.
+// SPEC: error.reactive.cycle — the chain type; the cycle-detection trapping
+// site is the walk in updateIfNecessary().
+final class EvaluationChain: @unchecked Sendable {
+    // @unchecked Sendable: EvaluationChain is immutable after init and bound
+    // via @TaskLocal withValue; it never escapes its withValue scope across tasks.
+    let nodeID: ObjectIdentifier
+    let next: EvaluationChain?
+
+    init(nodeID: ObjectIdentifier, next: EvaluationChain?) {
+        self.nodeID = nodeID
+        self.next = next
+    }
+}
+
+/// Task-local key for the current evaluation chain.
+// SPEC: error.reactive.cycle — entry point for cycle detection.
+enum EvaluationChainKey {
+    @TaskLocal static var current: EvaluationChain? = nil
+}
+
 // MARK: - SourceEdge
 
 /// A tracked dependency edge from a consumer node to one of its sources.
@@ -46,6 +75,17 @@ final class ReactiveFrame: @unchecked Sendable {
 
     /// Source edges accumulated during this run; becomes the node's new `sources`.
     var sources: [SourceEdge] = []
+
+    /// Set when a first-time tracked read observed a source that was already
+    /// re-invalidated at registration time (its state was not clean inside the
+    /// register-and-copy critical section). The consumer's commit treats this
+    /// like a generation bump: settle `.check` so the next read re-validates.
+    // SPEC: behavior.reactive.write-visibility — first-track invalidation flag.
+    private(set) var observedInvalidatedSource = false
+
+    func markObservedInvalidatedSource() {
+        observedInvalidatedSource = true
+    }
 
     init(observer: AnyReactiveNode) {
         self.observer = observer

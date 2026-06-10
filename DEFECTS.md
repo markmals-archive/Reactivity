@@ -22,14 +22,6 @@ When you fix an entry, delete it. The fix commit is the durable record.
 
 - Don't add status fields, severity labels, or assignees. If an entry needs more structure than the shape above, it's probably a spec change, not a defect.
 
-### Concurrent write during recompute is lost, leaving a stale clean cache
-
-- observed: 2026-06-10
-- where: Sources/ReactiveGraph/ReactiveNode.swift (`invalidate(_:)` upgrade no-op + `recompute()` commit)
-- symptom: A write to a tracked source that lands while a dependent derived is mid-recompute is swallowed — the derived is already `.dirty`, so `invalidate(.dirty)` no-ops, then the commit stores the pre-write result with `.clean`; later reads return the stale value until the source changes again.
-- repro: Task A reads a derived whose body reads `@State s` then blocks; task B sets `s`; A's recompute commits; reading the derived now yields the pre-write value with no pending invalidation. Single-task variant: a derived body that writes its own tracked source after reading it (an unspecced write-inside-computation cycle).
-- notes: Found by adversarial review (Codex) of behavior.reactive.derivation. No spec defines linearization for writes racing a recompute. Likely promote-to-spec (concurrency behavior) rather than fix-in-place. Related: domain.signal, behavior.reactive.derivation.
-
 ### Dependency edges form strong retain cycles between source and observer nodes
 
 - observed: 2026-06-10
